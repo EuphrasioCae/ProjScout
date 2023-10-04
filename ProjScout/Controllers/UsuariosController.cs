@@ -45,7 +45,7 @@ namespace ProjScout.Controllers
         public async Task<IActionResult> Login(Usuario usuario)
         {
             var dados = await _context.Usuarios
-                .FindAsync(usuario.Id);
+                .FirstOrDefaultAsync(u => u.Nome == usuario.Nome);
 
             if (dados == null)
             {
@@ -120,10 +120,19 @@ namespace ProjScout.Controllers
         // POST: Usuarios/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Nome,Senha,Perfil")] Usuario usuario)
+        public async Task<IActionResult> Create([Bind("Nome,Senha,Perfil")] Usuario usuario)
         {
             if (ModelState.IsValid)
             {
+                // Verifique se já existe um usuário com o mesmo nome
+                var existingUser = await _context.Usuarios.FirstOrDefaultAsync(u => u.Nome == usuario.Nome);
+
+                if (existingUser != null)
+                {
+                    ModelState.AddModelError("Nome", "Já existe um usuário com este nome.");
+                    return View(usuario);
+                }
+
                 usuario.Senha = BCrypt.Net.BCrypt.HashPassword(usuario.Senha);
                 _context.Add(usuario);
                 await _context.SaveChangesAsync();
@@ -214,14 +223,14 @@ namespace ProjScout.Controllers
             {
                 _context.Usuarios.Remove(usuario);
             }
-            
+
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool UsuarioExists(int id)
         {
-          return _context.Usuarios.Any(e => e.Id == id);
+            return _context.Usuarios.Any(e => e.Id == id);
         }
     }
 }
